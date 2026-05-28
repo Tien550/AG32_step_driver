@@ -1,0 +1,65 @@
+#//////////////////////////# CLK_MUL #/////////////////////////#
+
+SYSCLK 100
+HSECLK 8
+
+
+#//////////////////////////////////////////////////////////////#
+#//////////////////////////# AXIS X #//////////////////////////#
+#//////////////////////////////////////////////////////////////#
+
+# ── Control inputs ───────────────────────────────────────────
+# en_x:        active HIGH  — HIGH=motor enabled,  LOW=disabled (q1/q3=0, FSM idle)
+# pul_x:       rising edge  — each rising edge = 1 microstep
+# dir_x:       active HIGH  — LOW=forward (cnt+),  HIGH=reverse (cnt-)
+# runhold_x:   active HIGH  — HIGH=Run (100% I),   LOW=Hold (50% I, DAC>>1)
+#              PULLUP → default HIGH (Run) when pin floating
+# microstep_x: active HIGH  — HIGH=16-step (±1/pulse), LOW=8-step (±2/pulse)
+en_x          PIN_1:INPUT
+pul_x         PIN_96:INPUT
+dir_x         PIN_15:INPUT
+runhold_x     PIN_78:INPUT:PULLUP
+microstep_x   PIN_16:INPUT
+
+# ── Overcurrent comparator (shared, active HIGH) ─────────────
+# HIGH=overcurrent fault → oc_fault latches, all q outputs blocked
+# LOW=normal (no fault)
+# PULLDOWN → default LOW (no fault) when comparator not connected;
+# floating HIGH would latch oc_fault permanently.
+cmp_ov_c_x    PIN_17:INPUT:PULLDOWN
+
+#//////////////////////////# COIL A (sine, 0 deg) #/////////////#
+
+# ── Chopper comparator coil A (active LOW) ───────────────────
+# LOW (0) = coil A current >= Vref_A → FSM exits S_DRIVE (current reached target)
+# HIGH(1) = coil A current <  Vref_A → continue driving
+# PULLUP → default HIGH (keep driving) when comparator not connected.
+cmp_x_a        PIN_95:INPUT:PULLUP
+
+# ── Gate outputs — left/right IRS2111S IN pins ───────────────
+q1_x_a          PIN_92:OUTPUT
+q3_x_a          PIN_88:OUTPUT
+
+# ── DAC outputs — 4-bit R-2R ladder → Vref_A ─────────────────
+dac_out_x_a[3]  PIN_86:OUTPUT
+dac_out_x_a[2]  PIN_84:OUTPUT
+dac_out_x_a[1]  PIN_82:OUTPUT
+dac_out_x_a[0]  PIN_80:OUTPUT
+
+#//////////////////////////# COIL B (cosine, 90 deg) #//////////#
+
+# ── Chopper comparator coil B (active LOW) ───────────────────
+# LOW (0) = coil B current >= Vref_B → FSM exits S_DRIVE (current reached target)
+# HIGH(1) = coil B current <  Vref_B → continue driving
+# PULLUP → default HIGH (keep driving) when comparator not connected.
+cmp_x_b        PIN_93:INPUT:PULLUP
+
+# ── Gate outputs — left/right IRS2111S IN pins ───────────────
+q1_x_b          PIN_91:OUTPUT
+q3_x_b          PIN_87:OUTPUT
+
+# ── DAC outputs — 4-bit R-2R ladder → Vref_B ─────────────────
+dac_out_x_b[3]  PIN_85:OUTPUT
+dac_out_x_b[2]  PIN_83:OUTPUT
+dac_out_x_b[1]  PIN_81:OUTPUT
+dac_out_x_b[0]  PIN_79:OUTPUT
