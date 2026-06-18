@@ -31,5 +31,5 @@ module chop_timer (
 
     assign cycle_start_a = (cnt == 12'd0) && en;
     //assign cycle_start_b = (cnt == (period_cycles >> 1)) && en;
-	 assign cycle_start_b = cycle_start_a;
+	assign cycle_start_b = cycle_start_a;
 endmodule

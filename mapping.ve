@@ -16,7 +16,7 @@ HSECLK 8
 #              PULLUP → default HIGH (Run) when pin floating
 # microstep_x: active HIGH  — HIGH=16-step (±1/pulse), LOW=8-step (±2/pulse)
 en_x          PIN_1:INPUT
-pul_x         PIN_96:INPUT
+pul_x         PIN_96:INPUT:PULLUP
 dir_x         PIN_15:INPUT
 runhold_x     PIN_78:INPUT:PULLUP
 microstep_x   PIN_16:INPUT

@@ -2,10 +2,9 @@
 .vscode/
 .claude/
 step_driver_release_batch.bin
-Backup/
 logic/
 rtl/project_2
 rtl/no_zc
 rtl/stepper_top_sim.v
-rtl/tb_stepper.ve
+rtl/tb_stepper.v
 rtl/*.v.bak

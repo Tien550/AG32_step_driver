@@ -2,6 +2,10 @@
 #define MAIN_H
 
 #include "board.h"
+#include <stdint.h>
+
+#define CPLD_BASE  0x60000000UL
+#define WR(offset, value)  (*(volatile uint32_t *)((CPLD_BASE) + (offset)) = (uint32_t)(value))
 
 #ifndef MSG_UART_ID
 #define MSG_UART_ID 1
