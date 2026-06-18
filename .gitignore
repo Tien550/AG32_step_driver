@@ -8,3 +8,4 @@ rtl/no_zc
 rtl/stepper_top_sim.v
 rtl/tb_stepper.v
 rtl/*.v.bak
+Test_final_case/
