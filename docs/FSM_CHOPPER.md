@@ -109,3 +109,4 @@ With standard settings configured in `src/main.c`:
 | `period_cycles`| 3332 | 3333 clocks | **33.33 $\mu\text{s}$** | 30 kHz master chopper frequency |
 | `overhead` | — | 2165 clocks | **21.65 $\mu\text{s}$** | Total non-drive phase budget |
 | `drive_max` | — | 1168 clocks | **11.68 $\mu\text{s}$** | Maximum allowed drive pulse duration |
+

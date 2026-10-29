@@ -3,25 +3,28 @@
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-agrv_sdk-orange.svg)](https://platformio.org/)
 [![SoC](https://img.shields.io/badge/SoC-AGM%20AG32VF303-blue.svg)](http://www.alta-gate.com/)
 [![FPGA Core](https://img.shields.io/badge/FPGA-2K%20LUTs%20CPLD-purple.svg)]()
-[![Gate Driver](https://img.shields.io/badge/Gate%20Driver-IRS2111S-red.svg)]()
+[![Gate Driver](https://img.shields.io/badge/Gate%20Driver-IRS2111S-red.svg)](https://www.infineon.com/)
+[![Hardware Lab](https://img.shields.io/badge/Lab%20Tests-10%2F10%20Verified%20(H1--H12)-success.svg)](docs/LAB_TESTCASES_AND_RESULTS.md)
 [![Verification](https://img.shields.io/badge/Simulation-12%2F12%20Pass-brightgreen.svg)](docs/VERIFICATION.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An open-source, high-performance 1-axis bipolar stepper motor driver implemented on the **AGM AG32VF303** System-on-Chip (integrating a 100 MHz 32-bit RISC-V RV32IMAFC CPU and an embedded ~2K LUT FPGA/CPLD fabric).
+An open-source, industrial-grade 1-axis bipolar stepper motor driver implemented on the **AGM AG32VF303** System-on-Chip (integrating a 100 MHz 32-bit RISC-V RV32IMAFC microcontroller and an embedded ~2K LUT FPGA/CPLD fabric).
 
-> **Vietnamese Documentation Available:** [Đọc bản tiếng Việt tại đây (README_VN.md)](README_VN.md).
+> **Vietnamese Documentation Available:** [Đọc bản tài liệu tiếng Việt đầy đủ tại đây (README_VN.md)](README_VN.md).
 
 ---
 
 ## Overview
 
-Traditional microcontroller-based stepper drivers struggle with high microstepping speeds, jitter-free timing, and ultra-fast current regulation due to interrupt latencies and software overhead. Dedicated driver ICs, on the other hand, are rigid black boxes with fixed chopper profiles.
+Traditional microcontroller-based stepper drivers suffer from jitter, step loss, and CPU overloading at high pulse rates. Dedicated driver ICs offer hardware execution but operate as rigid "black boxes" with fixed chopper profiles and fixed decay timings.
 
-This project delivers the optimal synergy:
+This project combines the best of both worlds:
 - **100% Hardware-Accelerated Execution:** The entire current-chopper FSM, sine/cosine microstepping lookup tables, dead-time generators, and overcurrent latches execute in dedicated FPGA logic at **100 MHz clock rate (10 ns resolution)**.
-- **Microsecond Mixed-Decay Chopping:** Combines active **Fast Decay** (reverse inductive energy quenching) and **Slow Decay** (recirculating low-side freewheeling) to eliminate current distortion during the falling quarters of the microstepping sine wave.
-- **Dynamic Firmware Reconfigurability:** Timing parameters (`dead_cycles`, `fast_cycles`, `slow_cycles`, `period_cycles`) are memory-mapped to the RISC-V core via the internal 32-bit AHB-Lite bus, allowing on-the-fly tuning directly from C code.
-- **Sub-100 ns Hardware Safety:** Overcurrent trips bypass all software pipelines, shutting down gate drives and clamping low-side MOSFETs within **80 ns** of qualification.
+- **Mixed-Decay Current Chopping:** Combines active **Fast Decay** ($5.0\text{ }\mu\text{s}$ reverse voltage quench) and **Slow Decay** ($15.0\text{ }\mu\text{s}$ low-side freewheeling) to eliminate current distortion during the falling quarters of the microstepping sine wave.
+- **Dynamic Firmware Reconfigurability:** Timing parameters (`dead_cycles`, `fast_cycles`, `slow_cycles`, `period_cycles`) are memory-mapped to the RISC-V core via the internal 32-bit AHB-Lite bus (`0x60000000`), allowing on-the-fly tuning directly from C firmware.
+- **Hardware Circuit Design:** Built-in multi-rail power distribution (+15V Gate rail, +36V to +48V Motor rail), 4-bit R-2R DAC ladders with U7 CMOS buffers, test points (TP10 Coil A, TP11 Coil B), 7407 inverter stages, and 4 discrete IRS2111S gate drivers (U19, U20, U21, U22).
+- **Sub-100 ns Hardware Safety:** Overcurrent trips bypass all software pipelines, shutting down gate drives and clamping low-side MOSFETs within **80 ns** of digital qualification.
+- **Zero-Crossing Elimination:** By setting the minimum LUT code to `2` ($0.413\text{ V}$ bias) instead of `0`, the dead-band zero-crossing stall is completely eliminated, simplifying the FSM to 6 deterministic states.
 
 ---
 
@@ -50,13 +53,14 @@ This project delivers the optimal synergy:
  |                    v                 v                            |
  |              [coil_drv A]      [coil_drv B]                       |
  |             +-------------+   +-------------+                     |
- |             |  vref_dac   |   |  vref_dac   | ===> 4-bit R-2R DAC |
- |             | hbridge_fsm |   | hbridge_fsm | ===> IRS2111S Gates |
+ |             |  vref_dac   |   |  vref_dac   | ===> U7 Buffer      |
+ |             | hbridge_fsm |   | hbridge_fsm | ===> 7407 Inverters |
  |             +-------------+   +-------------+                     |
- |                    ^                 ^                            |
- |                    +--------+--------+                            |
- |                             |                                     |
- |                       [chop_timer] (30 kHz Master Counter)        |
+ |                    ^                 ^        ===> 4-bit R-2R DAC |
+ |                    +--------+--------+        ===> 4x IRS2111S    |
+ |                             |                      (U19,U20,      |
+ |                       [chop_timer]                 (U21,U22)      |
+ |                       (30 kHz Master Counter)                     |
  |                             |                                     |
  |  [oc_guard] <--- PIN_17 (Overcurrent Comparator)                  |
  |       |                                                           |
@@ -66,25 +70,29 @@ This project delivers the optimal synergy:
 
 ---
 
-## Key Features
+## Power Distribution & Hardware Stage
 
-- **SoC Architecture:** AGM AG32VF303 (RISC-V RV32IMAFC core @ 100 MHz, 128 KB SRAM, 256 KB Flash, ~2K LUTs CPLD fabric).
-- **H-Bridge Power Stage:** Dual IRS2111S half-bridge gate drivers per coil with built-in internal dead-time (typ. 650 ns) plus user-configurable software dead-time margin.
-- **Mixed-Decay Current Chopper:** 6-state FSM (`S_DT_ON`, `S_DRIVE`, `S_DT_OFF`, `S_FAST`, `S_SLOW`, `S_OFF`) per phase operating at 30 kHz.
-- **Direction-Safe Fast Decay:** Latches drive polarity (`decay_sign`) exclusively at cycle entry to ensure fast decay reverse voltage always opposes the actual magnetic flux, preventing current shoot-ahead at zero crossings.
-- **Reference Voltage Generation:** Dual 4-bit R-2R resistor ladders generating sinusoidal reference levels ($0.413\text{ V}$ to $2.888\text{ V}$).
-- **Microstepping Resolutions:**
-  - **16-step mode:** 16 microsteps per electrical cycle ($\pm 1$ per step pulse).
-  - **8-step mode:** 8 microsteps per electrical cycle ($\pm 2$ per step pulse).
-- **Run / Hold Current Modes:** Hardware input pin selects 100% current (Run) or 50% current attenuation (Hold) without affecting step position.
-- **Overcurrent Latch Protection:** Dedicated comparator input with an 8-clock digital blanking filter ($80\text{ ns}$ @ 100 MHz) to eliminate false trips from diode reverse-recovery or switching ringing.
-- **Safe Clamping:** In fault or disabled states, all IRS2111S inputs are driven LOW, turning both low-side switches ON to ground motor terminals and safely quench inductive energy.
+The driver board is engineered with three distinct, galvanically shared voltage rails:
+
+| Rail | Voltage | Function | Hardware Components |
+| :--- | :---: | :--- | :--- |
+| **Nguồn Tím (Purple)** | **+36V to +48V DC** | Motor Power Supply | H-Bridge Power MOSFETs, Stepper Coils, Bulk Capacitors |
+| **Nguồn Đỏ (Red)** | **+15V DC** | Gate Driver Rail | IRS2111S ICs (U19, U20, U21, U22), Bootstrap Diodes |
+| **Nguồn Lam (Blue)** | **0V (GND)** | Power Ground | System common return, Star ground topology |
+
+### Key Hardware Stages:
+- **Reference DAC Stage:** 4-bit digital outputs pass through buffer IC **U7**, through discrete R-2R resistor ladders, outputting analog sine/cosine reference voltages at **`TP10` (Coil A)** and **`TP11` (Coil B)**.
+- **Protection Resistor:** $10\text{ k}\Omega$ series resistor into the analog comparator inputs to isolate switching noise.
+- **Gate Inverter Stage:** CPLD outputs ($a', b'$ for Coil A; $c', d'$ for Coil B) pass through **7407** open-drain NOT-gates before driving IRS2111S `IN` pins.
+- **Power Stage:** 4 discrete IRS2111S half-bridge drivers with internal dead time (typ. 650 ns) driving 8 N-channel power MOSFETs with bootstrap high-side gate biasing ($V_S + 15\text{V}$).
+
+For complete schematics and circuit calculations, see [`docs/HARDWARE_CIRCUIT.md`](docs/HARDWARE_CIRCUIT.md).
 
 ---
 
 ## Hardware Pinout (`mapping.ve`)
 
-Pin configurations are defined in [`mapping.ve`](mapping.ve) for the AGM AG32:
+Pin configurations mapped for the AGM AG32VF303:
 
 ### Control & Status Pins
 
@@ -99,21 +107,21 @@ Pin configurations are defined in [`mapping.ve`](mapping.ve) for the AGM AG32:
 
 ### Phase A (Coil A — Sine $0^\circ$)
 
-| Signal Name | Pin No. | Direction | Connected Device | Function |
+| Signal Name | Pin No. | Direction | Hardware Stage | Function |
 | :--- | :---: | :---: | :--- | :--- |
 | `cmp_x_a` | **PIN_95** | Input (PULLUP) | Comparator A Out | Peak current detect (Active LOW: LOW = current reached $V_{\text{ref\_A}}$) |
-| `q1_x_a` | **PIN_92** | Output | IRS2111S (Left) | Left half-bridge gate control input (`IN_L`) |
-| `q3_x_a` | **PIN_88** | Output | IRS2111S (Right) | Right half-bridge gate control input (`IN_R`) |
-| `dac_out_x_a[3:0]` | **PIN_86, 84, 82, 80** | Output | 4-bit R-2R Ladder | Current reference DAC outputs ($V_{\text{ref\_A}}$) |
+| `q1_x_a` | **PIN_92** | Output | U19 IRS2111S (via 7407) | Left half-bridge gate control input (`IN_L`) |
+| `q3_x_a` | **PIN_88** | Output | U20 IRS2111S (via 7407) | Right half-bridge gate control input (`IN_R`) |
+| `dac_out_x_a[3:0]` | **PIN_86, 84, 82, 80** | Output | U7 Buffer $\rightarrow$ R-2R | Current reference DAC outputs ($\rightarrow$ `TP10`) |
 
 ### Phase B (Coil B — Cosine $90^\circ$)
 
-| Signal Name | Pin No. | Direction | Connected Device | Function |
+| Signal Name | Pin No. | Direction | Hardware Stage | Function |
 | :--- | :---: | :---: | :--- | :--- |
 | `cmp_x_b` | **PIN_93** | Input (PULLUP) | Comparator B Out | Peak current detect (Active LOW: LOW = current reached $V_{\text{ref\_B}}$) |
-| `q1_x_b` | **PIN_91** | Output | IRS2111S (Left) | Left half-bridge gate control input (`IN_L`) |
-| `q3_x_b` | **PIN_87** | Output | IRS2111S (Right) | Right half-bridge gate control input (`IN_R`) |
-| `dac_out_x_b[3:0]` | **PIN_85, 83, 81, 79** | Output | 4-bit R-2R Ladder | Current reference DAC outputs ($V_{\text{ref\_B}}$) |
+| `q1_x_b` | **PIN_91** | Output | U21 IRS2111S (via 7407) | Left half-bridge gate control input (`IN_L`) |
+| `q3_x_b` | **PIN_87** | Output | U22 IRS2111S (via 7407) | Right half-bridge gate control input (`IN_R`) |
+| `dac_out_x_b[3:0]` | **PIN_85, 83, 81, 79** | Output | U7 Buffer $\rightarrow$ R-2R | Current reference DAC outputs ($\rightarrow$ `TP11`) |
 
 ---
 
@@ -128,8 +136,8 @@ stateDiagram-v2
     S_DT_ON --> S_DRIVE : timer >= dead_th (800 ns)
     S_DRIVE --> S_DT_OFF : cmp tripped OR timer >= drive_max
     S_DT_OFF --> S_FAST : timer >= dead_th (800 ns)
-    S_FAST --> S_SLOW : timer >= cur_fast_th (5 us)
-    S_SLOW --> S_OFF : timer >= slow_th (15 us)
+    S_FAST --> S_SLOW : timer >= cur_fast_th (5.0 us)
+    S_SLOW --> S_OFF : timer >= slow_th (15.0 us)
 ```
 
 1. **`S_DT_ON`:** Dead-time before drive. Both half-bridge inputs forced LOW (low-side FETs ON) for 800 ns.
@@ -139,7 +147,7 @@ stateDiagram-v2
 5. **`S_SLOW`:** Slow decay phase. Low-side FETs turned ON for $15.0\text{ }\mu\text{s}$, allowing residual current to recirculate with minimal ripple.
 6. **`S_OFF`:** Idle phase until the next master chopper cycle begins.
 
-For mathematical derivations and zero-crossing analysis, see [`docs/FSM_CHOPPER.md`](docs/FSM_CHOPPER.md).
+For mathematical derivations, decay polarity latching, and zero-crossing analysis, see [`docs/FSM_CHOPPER.md`](docs/FSM_CHOPPER.md).
 
 ---
 
@@ -154,7 +162,7 @@ The CPLD chopper register file is mapped into RISC-V memory space at base addres
 | `0x08` | `slow_cycles` | `[11:0]` | R/W | `1499` | **15.00 $\mu\text{s}$** recirculating slow-decay duration |
 | `0x0C` | `period_cycles`| `[11:0]` | R/W | `3332` | **33.33 $\mu\text{s}$** period (**30.00 kHz** chopper frequency) |
 
-### Firmware Configuration Example (`src/main.c`)
+### Firmware Configuration (`src/main.c`)
 
 ```c
 #include "main.h"
@@ -172,7 +180,7 @@ int main(void)
     WR(0x0C, 3332u); // period_cycles — 30 kHz chopper     (= 3333 - 1)
 
     while (1) {
-        // Application code / diagnostics
+        // Main supervision loop
     }
 }
 ```
@@ -204,11 +212,32 @@ The lookup table ([`rtl/sine_lut.v`](rtl/sine_lut.v)) maps 16 discrete angles pe
 
 ---
 
-## Verification & Testbench Results
+## Hardware Laboratory Test Results (Oscilloscope Captures H1–H12)
 
-The testbench ([`rtl/tb_stepper.v`](rtl/tb_stepper.v)) exercises the complete digital core under realistic timing constraints:
+The driver was comprehensively characterized across 10 physical hardware test cases:
 
-| ID | Test Scenario | Description | Result |
+| ID | Experiment | Description & Findings | Oscilloscope Capture | Result |
+| :---: | :--- | :--- | :---: | :---: |
+| **TC1** | 1/8 Microstepping | 8 distinct voltage levels; current tracks reference envelope | **H1** | **PASS** |
+| **TC2** | 1/16 Microstepping | 16 voltage levels; noticeably smoother sine wave, near-silent motion | **H2** | **PASS** |
+| **TC3** | Run / Hold Current | Instantaneous 50% amplitude drop, **75% power reduction** | **H3** | **PASS** |
+| **TC4** | Direction / Enable | Smooth motion reversal; instantaneous shutdown upon EN = 0 | — | **PASS** |
+| **TC5** | Overcurrent Trip | Hardware shutoff within $< 80\text{ ns}$, permanent latching | — | **PASS** |
+| **TC6** | Frequency Sweep | Swept pulse frequency up to pull-in stall cutoff at **$\approx 3.7\text{ kHz}$** | **H4, H5, H6, H7, H8** | **PASS** |
+| **TC7** | Mixed-Decay Zoom | Measured $5.0\text{ }\mu\text{s}$ Fast Decay and $15.0\text{ }\mu\text{s}$ Slow Decay on winding | — | **PASS** |
+| **TC8** | Chopper Frequency | Measured total switching period of $33.33\text{ }\mu\text{s}$ (**30.00 kHz**) | — | **PASS** |
+| **TC9** | Dynamic Mode Switch | 16-step $\rightarrow$ 8-step switch at index 1; verified with trigger pins 51/52 | **H9', H10** | **PASS** |
+| **TC10**| Phase-Shifted Mode | Measured dual-coil waveforms with interleaved $180^\circ$ phase offset | **H11, H12** | **PASS** |
+
+For waveforms, oscilloscope screenshots, and deep-dive notes, see [`docs/LAB_TESTCASES_AND_RESULTS.md`](docs/LAB_TESTCASES_AND_RESULTS.md).
+
+---
+
+## Digital Simulation Verification (`rtl/tb_stepper.v`)
+
+The Verilog testbench exercises the digital core with 12 automated test cases:
+
+| ID | Test Scenario | Verified Behavior | Status |
 | :---: | :--- | :--- | :---: |
 | **TC1** | Reset Verification | All gate outputs forced LOW during reset | **PASS** |
 | **TC2** | FSM Full Cycle | Sequence verification: DRIVE $\rightarrow$ FAST $\rightarrow$ SLOW | **PASS** |
@@ -222,8 +251,6 @@ The testbench ([`rtl/tb_stepper.v`](rtl/tb_stepper.v)) exercises the complete di
 | **TC10**| Zero-Crossing Quench | Safe transition through zero-crossing microstep | **PASS** |
 | **TC11**| Phase Interleaving | Interleaved chopper start phases for reduced rail ripple | **PASS** |
 | **TC12**| Immediate Startup | Instant step registration post-reset | **PASS** |
-
-For the complete verification suite report, see [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
 ---
 
@@ -249,37 +276,41 @@ pio run -e debug -t upload
 
 ```
 .
-├── LICENSE                      # MIT License
-├── README.md                    # English master documentation
-├── README_VN.md                 # Full Vietnamese documentation
-├── mapping.ve                   # AGM CPLD pin assignment configuration
-├── platformio.ini               # PlatformIO build configuration for agrv2k_303
-├── docs/                        # In-depth technical documentation
-│   ├── ARCHITECTURE.md          # Complete hardware & RTL architecture
-│   ├── FSM_CHOPPER.md           # Mixed-decay chopper theory & state machine
-│   ├── PINOUT_AND_SCHEMATIC.md  # Detailed pinout & interface calculations
-│   ├── REGISTERS_API.md         # AHB-Lite register map & C driver API
-│   └── VERIFICATION.md          # Testbench specifications & simulation report
-├── rtl/                         # Verilog digital hardware sources
-│   ├── blanking_filter.v        # Generic digital noise blanking filter
-│   ├── chopper_thresholds.v     # Dynamic timing limit calculator
-│   ├── chopper_timer.v          # Master 30 kHz chopper counter
-│   ├── coil_driver_dac.v        # Single-coil driver wrapper (DAC + FSM)
-│   ├── dac4_vref.v              # 4-bit R-2R DAC output with Run/Hold scaling
-│   ├── input_sync.v             # Multi-signal input synchronizer
-│   ├── oc_latch.v               # Overcurrent qualification & latching guard
-│   ├── pwm_b_fsm.v              # 6-state peak-current mixed-decay FSM
-│   ├── pwm_gate_dec.v           # IRS2111S gate signal decoder
-│   ├── pwm_timer.v              # Chopper phase interval timer
-│   ├── sine_lut.v               # 16-entry sine/cosine microstepping LUT
-│   ├── step_sequencer.v         # Microstep counter & pulse edge detector
-│   ├── stepper_axis.v           # 2-phase axis core (Phase A & B)
-│   ├── stepper_top.v            # Top-level with AHB bus interface
-│   ├── syn_in_signal.v          # Multi-stage flip-flop synchronizer
-│   └── tb_stepper.v             # Comprehensive 12-testcase verification bench
-└── src/                         # RISC-V MCU firmware
-    ├── main.c                   # Application entry & AHB register setup
-    └── main.h                   # CPLD memory-map macros & system headers
+├── LICENSE                          # MIT License
+├── README.md                        # English master documentation
+├── README_VN.md                     # Full Vietnamese documentation
+├── mapping.ve                       # AGM CPLD pin assignment configuration
+├── platformio.ini                   # PlatformIO build configuration for agrv2k_303
+├── docs/                            # In-depth technical documentation suite
+│   ├── ARCHITECTURE.md              # Complete hardware & RTL architecture
+│   ├── HARDWARE_CIRCUIT.md          # Power rails, U7 buffer, 7407, IRS2111S, bootstrap
+│   ├── FSM_CHOPPER.md               # Mixed-decay chopper theory & state machine
+│   ├── LAB_TESTCASES_AND_RESULTS.md # 10 real-world lab tests & oscilloscope captures
+│   ├── INDUSTRIAL_COMPARISON.md     # Benchmark vs Siruba & Brother 430D drivers
+│   ├── PINOUT_AND_SCHEMATIC.md      # Detailed pinout & interface calculations
+│   ├── REGISTERS_API.md             # AHB-Lite register map & C driver API
+│   ├── VERIFICATION.md              # Testbench specifications & simulation report
+│   └── images/                      # Oscilloscope captures, schematics, and diagrams
+├── rtl/                             # Verilog digital hardware sources
+│   ├── blanking_filter.v            # Generic digital noise blanking filter
+│   ├── chopper_thresholds.v         # Dynamic timing limit calculator
+│   ├── chopper_timer.v              # Master 30 kHz chopper counter
+│   ├── coil_driver_dac.v            # Single-coil driver wrapper (DAC + FSM)
+│   ├── dac4_vref.v                  # 4-bit R-2R DAC output with Run/Hold scaling
+│   ├── input_sync.v                 # Multi-signal input synchronizer
+│   ├── oc_latch.v                   # Overcurrent qualification & latching guard
+│   ├── pwm_b_fsm.v                  # 6-state peak-current mixed-decay FSM
+│   ├── pwm_gate_dec.v               # IRS2111S gate signal decoder
+│   ├── pwm_timer.v                  # Chopper phase interval timer
+│   ├── sine_lut.v                   # 16-entry sine/cosine microstepping LUT
+│   ├── step_sequencer.v             # Microstep counter & pulse edge detector
+│   ├── stepper_axis.v               # 2-phase axis core (Phase A & B)
+│   ├── stepper_top.v                # Top-level with AHB bus interface
+│   ├── syn_in_signal.v              # Multi-stage flip-flop synchronizer
+│   └── tb_stepper.v                 # Comprehensive 12-testcase verification bench
+└── src/                             # RISC-V MCU firmware
+    ├── main.c                       # Application entry & AHB register setup
+    └── main.h                       # CPLD memory-map macros & system headers
 ```
 
 ---
@@ -287,11 +318,14 @@ pio run -e debug -t upload
 ## Documentation Index
 
 - [System Architecture (docs/ARCHITECTURE.md)](docs/ARCHITECTURE.md)
-- [Chopper FSM & Mixed Decay (docs/FSM_CHOPPER.md)](docs/FSM_CHOPPER.md)
-- [Pinout & Hardware Interface (docs/PINOUT_AND_SCHEMATIC.md)](docs/PINOUT_AND_SCHEMATIC.md)
+- [Hardware Circuit Design & Power Architecture (docs/HARDWARE_CIRCUIT.md)](docs/HARDWARE_CIRCUIT.md)
+- [Chopper FSM & Mixed Decay Theory (docs/FSM_CHOPPER.md)](docs/FSM_CHOPPER.md)
+- [Laboratory Testcases & Waveforms H1–H12 (docs/LAB_TESTCASES_AND_RESULTS.md)](docs/LAB_TESTCASES_AND_RESULTS.md)
+- [Industrial Comparison: Siruba & Brother 430D (docs/INDUSTRIAL_COMPARISON.md)](docs/INDUSTRIAL_COMPARISON.md)
+- [Pinout & Hardware Calculations (docs/PINOUT_AND_SCHEMATIC.md)](docs/PINOUT_AND_SCHEMATIC.md)
 - [AHB Register Map & C Driver API (docs/REGISTERS_API.md)](docs/REGISTERS_API.md)
-- [Simulation & Verification Suite (docs/VERIFICATION.md)](docs/VERIFICATION.md)
-- [Tài Liệu Tiếng Việt (README_VN.md)](README_VN.md)
+- [Digital Simulation Testbench Report (docs/VERIFICATION.md)](docs/VERIFICATION.md)
+- [Tài Liệu Tiếng Việt Đầy Đủ (README_VN.md)](README_VN.md)
 
 ---
 

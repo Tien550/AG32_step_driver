@@ -92,3 +92,4 @@ void stepper_set_timing(uint32_t dead_ns, uint32_t fast_us, uint32_t slow_us, ui
     CPLD_WRITE(REG_PERIOD_CYCLES, period_val);
 }
 ```
+

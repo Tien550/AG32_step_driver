@@ -115,3 +115,4 @@ The overcurrent comparator (`cmp_ov_c_x` on PIN_17) monitors the total DC link r
 - **Overcurrent Event:** Comparator output transitions HIGH (`1`).
 - **FPGA Filtering:** The on-chip `blanking_filter` rejects transient spikes shorter than $80\text{ ns}$ (8 clock cycles @ 100 MHz).
 - **Latching:** If the fault condition persists for $\ge 80\text{ ns}$, `oc_fault` latches HIGH, disabling all high-side drive and clamping all low-side switches.
+

@@ -63,3 +63,4 @@ iverilog -o sim_stepper.vvp -g2012 \
 
 vvp sim_stepper.vvp
 ```
+

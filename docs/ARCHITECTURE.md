@@ -37,6 +37,9 @@ The AG32VF303 integrates:
                                          Stepper Motor
 ```
 
+![RTL System Block Diagram](images/rtl_system_block_diagram.png)
+*Figure 1: Full RTL architecture block diagram and internal FPGA bus connectivity.*
+
 ---
 
 ## 2. Top-Level RTL Hierarchy
@@ -120,6 +123,12 @@ ax1_top (stepper_top.v)
 - Drives the two half-bridges per coil through 6 distinct operational states.
 - See [`FSM_CHOPPER.md`](FSM_CHOPPER.md) for timing diagrams, state transitions, and mixed decay calculations.
 
+![RTL Chopper Timing Diagram](images/rtl_chopper_timing_diagram.png)
+*Figure 2: Chopper period timing breakdown (Drive, Fast Decay, Slow Decay, Software Dead Time).*
+
+![RTL FSM Mixed Decay Diagram](images/rtl_fsm_mixed_decay_diagram.png)
+*Figure 3: Hardware FSM state machine transitions and IRS2111S gate control semantics.*
+
 ---
 
 ## 4. IRS2111S Gate Driver Semantics
@@ -140,3 +149,4 @@ The IRS2111S is a high-voltage, high-speed half-bridge gate driver featuring:
 | `sys_clk` | Internal PLL | 100 MHz (10 ns) | Main system clock for CPLD logic and RISC-V core |
 | `bus_clk` | AHB bus clock | 100 MHz (10 ns) | AHB-Lite bus interface clock |
 | `rst_n` | System reset | Asynchronous | Active-low hardware reset (clears registers, resets FSMs to S_OFF, resets OC latch) |
+
