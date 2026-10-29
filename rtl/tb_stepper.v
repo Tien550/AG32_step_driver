@@ -514,16 +514,16 @@ module tb_stepper;
         run_hold = 1;
 
         // ─────────────────────────────────────────────────────────
-        // TC10: zero-crossing fast+slow decay at step=0 (dac=0)
+        // TC10: Zero-crossing elimination & decay operation (step=0, dac=2)
         // ─────────────────────────────────────────────────────────
-        $display("\n=== TC10: Zero-Crossing Fast+Slow Decay (Coil A at step=0) ===");
+        $display("\n=== TC10: Zero-Crossing Elimination & Decay Operation (Coil A at step=0) ===");
 
         rst_n = 0; repeat(5) @(posedge clk);
         rst_n = 1; repeat(5) @(posedge clk);
         axis_en = 1; run_hold = 1;
         wait_chopper(1);
 
-        $display("TC10: step_cnt=%0d, dac_a=%0d (expected step=0, dac=0)",
+        $display("TC10: step_cnt=%0d, dac_a=%0d (expected step=0, dac_min=2 for zero-crossing immunity)",
                  dut.u_core.u_ms_seq.step_cnt, dut.u_core.dac_a);
 
         begin : TC10_CHECK
@@ -536,23 +536,23 @@ module tb_stepper;
                 if (dut.u_core.u_coil_a.u_fsm.state == 3'd3) saw_fast  = 1;
                 if (dut.u_core.u_coil_a.u_fsm.state == 3'd4) saw_slow  = 1;
             end
-            if (!saw_dt_on && !saw_drive)
-                $display("PASS TC10-SKIP:  S_DT_ON and S_DRIVE not entered at dac=0");
+            if (saw_dt_on && saw_drive)
+                $display("PASS TC10-ACTIVE: S_DT_ON and S_DRIVE active with non-zero minimum bias (dac=2)");
             else begin
-                $display("FAIL TC10-SKIP:  S_DT_ON=%0d S_DRIVE=%0d entered at dac=0",
+                $display("FAIL TC10-ACTIVE: S_DT_ON=%0d S_DRIVE=%0d not entered at dac=2",
                          saw_dt_on, saw_drive);
                 err_count = err_count + 1;
             end
             if (saw_fast)
-                $display("PASS TC10-FAST:  S_FAST entered (active quench with decay_sign)");
+                $display("PASS TC10-FAST:   S_FAST entered (active quench with decay_sign)");
             else begin
-                $display("FAIL TC10-FAST:  S_FAST not entered — no active quench");
+                $display("FAIL TC10-FAST:   S_FAST not entered — no active quench");
                 err_count = err_count + 1;
             end
             if (saw_slow)
-                $display("PASS TC10-SLOW:  S_SLOW entered (final freewheeling decay)");
+                $display("PASS TC10-SLOW:   S_SLOW entered (final freewheeling decay)");
             else begin
-                $display("FAIL TC10-SLOW:  S_SLOW not entered — no decay path");
+                $display("FAIL TC10-SLOW:   S_SLOW not entered — no decay path");
                 err_count = err_count + 1;
             end
         end
