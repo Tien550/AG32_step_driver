@@ -7,7 +7,9 @@
 // Using one shared counter ensures the offset always tracks exactly 50% of
 // the current period, even when period_cycles is changed at runtime.
 
-module chop_timer (
+module chop_timer #(
+    parameter PHASE_SHIFTED = 1
+)(
     input  wire        clk,
     input  wire        rst_n,
     input  wire        en,
@@ -30,6 +32,5 @@ module chop_timer (
     end
 
     assign cycle_start_a = (cnt == 12'd0) && en;
-    //assign cycle_start_b = (cnt == (period_cycles >> 1)) && en;
-	assign cycle_start_b = cycle_start_a;
+    assign cycle_start_b = (PHASE_SHIFTED ? (cnt == (period_cycles >> 1)) : (cnt == 12'd0)) && en;
 endmodule

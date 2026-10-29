@@ -22,4 +22,9 @@ int main(void)
     WR(0x08, 1499u); // slow_cycles   — 15 µs slow decay  (= 1500-1)
     WR(0x0C, 3332u); // period_cycles — 30 kHz chopper    (= 3333-1)
 
+    while (1) {
+        // Main supervisor loop
+    }
+
+    return 0;
 }

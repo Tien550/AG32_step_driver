@@ -19,7 +19,6 @@ logic/
 # Vivado simulation workspace
 rtl/project_2/
 rtl/no_zc/
-rtl/stepper_top_sim.v
 
 # Backup and temp files
 rtl/*.v.bak

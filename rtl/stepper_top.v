@@ -3,7 +3,7 @@
 // Pin mapping (from mapping.ve):
 //   Inputs  (8): axis_en=PIN_1    step_pul=PIN_96   step_dir=PIN_15  run_hold=PIN_78
 //                oc_cmp=PIN_17    cmp_a=PIN_95       cmp_b=PIN_93
-//                microstep=PIN_2  (0=8-step, 1=16-step)
+//                microstep=PIN_16 (0=8-step, 1=16-step)
 //   Outputs (10): q1_a=PIN_92  q3_a=PIN_88  dac_a[3:0]=PIN_86,84,82,80
 //                 q1_b=PIN_91  q3_b=PIN_87  dac_b[3:0]=PIN_85,83,81,79
 //

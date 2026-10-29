@@ -613,8 +613,10 @@ module tb_stepper;
         $display("\n==========================================");
         if (err_count == 0)
             $display("  RESULT: ALL TESTS PASSED");
-        else
+        else begin
             $display("  RESULT: FAILED — %0d error(s)", err_count);
+            $fatal(1, "Testbench failure: regression detected");
+        end
         $display("==========================================\n");
         $finish;
     end
@@ -624,8 +626,7 @@ module tb_stepper;
     // ─────────────────────────────────────────────────────────────
     initial begin
         #200000000;
-        $display("TIMEOUT: simulation exceeded 200 ms");
-        $finish;
+        $fatal(1, "TIMEOUT: simulation exceeded 200 ms limit");
     end
 
 endmodule

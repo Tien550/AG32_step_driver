@@ -13,9 +13,9 @@ The driver board operates from three distinct, galvanically shared voltage rails
 |                        POWER RAIL TOPOLOGY                              |
 |                                                                         |
 |  +------------------------+      +-----------------------------------+  |
-|  | MOTOR POWER RAIL       |      | GATE DRIVE SUPPLY                 |  |
-|  | +36V to +48V DC        |      | +15V DC (Nguồn Đỏ)                |  |
-|  | (Nguồn Tím)            |      | Powers IRS2111S (U19, U20,        |  |
+|  | MOTOR POWER SUPPLY     |      | GATE DRIVER SUPPLY                |  |
+|  | +36V to +48V DC        |      | +15V DC (Red Lead)                |  |
+|  | (Purple Lead)          |      | Powers IRS2111S (U19, U20,        |  |
 |  | Main H-Bridge Supply   |      |                  U21, U22)        |  |
 |  +-----------+------------+      +-----------------+-----------------+  |
 |              |                                     |                    |
@@ -26,16 +26,16 @@ The driver board operates from three distinct, galvanically shared voltage rails
 |              +------------------+------------------+                    |
 |                                 |                                       |
 |                                 v                                       |
-|                    POWER GROUND / 0V (Nguồn Lam)                        |
+|                    POWER GROUND / 0V (Blue Lead)                        |
 +-------------------------------------------------------------------------+
 ```
 
 | Rail Name | Color Code | Nominal Voltage | Target Subsystem | Design Considerations |
 | :--- | :---: | :---: | :--- | :--- |
-| **Motor Rail** | **Tím (Purple)** | **+36V to +48V** | H-Bridge Power MOSFETs & Motor Coils | High bulk capacitance ($1000\text{ }\mu\text{F} \text{ to } 2200\text{ }\mu\text{F}$ low-ESR) to absorb inductive flyback currents during Fast Decay. |
-| **Gate Rail** | **Đỏ (Red)** | **+15V** | IRS2111S Gate Driver VCC | Powers internal level shifters and charges bootstrap capacitors to provide $V_{GS} = 15\text{V}$ for hard MOSFET saturation. |
-| **Logic Rail** | **Cam (Orange)** | **+3.3V** | AGM AG32 SoC, U7 Buffer, 7407 Inverters, Comparators | Regulated via onboard LDO/buck from 15V. Decoupled with $100\text{ nF}$ ceramic caps at every IC. |
-| **GND** | **Lam (Blue)** | **0V** | Shared System Common Return | Star ground routing: High-current motor ground separated from sensitive analog comparator ground. |
+| **Motor Rail** | **Purple Lead** | **+36V to +48V** | H-Bridge Power MOSFETs & Motor Coils | High bulk capacitance ($1000\text{ }\mu\text{F} \text{ to } 2200\text{ }\mu\text{F}$ low-ESR) to absorb inductive flyback currents during Fast Decay. |
+| **Gate Rail** | **Red Lead** | **+15V** | IRS2111S Gate Driver VCC | Powers internal level shifters and charges bootstrap capacitors to provide $V_{GS} = 15\text{V}$ for hard MOSFET saturation. |
+| **Logic Rail** | **Orange Lead** | **+3.3V** | AGM AG32 SoC, U7 Buffer, 7407 Inverters, Comparators | Regulated via onboard LDO/buck from 15V. Decoupled with $100\text{ nF}$ ceramic caps at every IC. |
+| **GND** | **Blue Lead** | **0V** | Shared System Common Return | Star ground routing: High-current motor ground separated from sensitive analog comparator ground. |
 
 ![Power Rails and Board Wiring](images/board_power_rails.png)
 *Figure 1: Power supply rails routing on the physical driver board (15V Gate rail, 36-48V Motor supply, 0V Common Ground).*

@@ -4,13 +4,12 @@
 [![SoC](https://img.shields.io/badge/SoC-AGM%20AG32VF303-blue.svg)](http://www.alta-gate.com/)
 [![FPGA Core](https://img.shields.io/badge/FPGA-2K%20LUTs%20CPLD-purple.svg)]()
 [![Gate Driver](https://img.shields.io/badge/Gate%20Driver-IRS2111S-red.svg)](https://www.infineon.com/)
+[![CI](https://github.com/Tien550/AG32_step_driver/actions/workflows/ci.yml/badge.svg)](https://github.com/Tien550/AG32_step_driver/actions/workflows/ci.yml)
 [![Hardware Lab](https://img.shields.io/badge/Lab%20Tests-10%2F10%20Verified%20(H1--H12)-success.svg)](docs/LAB_TESTCASES_AND_RESULTS.md)
 [![Verification](https://img.shields.io/badge/Simulation-12%2F12%20Pass-brightgreen.svg)](docs/VERIFICATION.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An open-source, industrial-grade 1-axis bipolar stepper motor driver implemented on the **AGM AG32VF303** System-on-Chip (integrating a 100 MHz 32-bit RISC-V RV32IMAFC microcontroller and an embedded ~2K LUT FPGA/CPLD fabric).
-
-> **Vietnamese Documentation Available:** [Đọc bản tài liệu tiếng Việt đầy đủ tại đây (README_VN.md)](README_VN.md).
 
 ---
 
@@ -76,9 +75,9 @@ The driver board is engineered with three distinct, galvanically shared voltage 
 
 | Rail | Voltage | Function | Hardware Components |
 | :--- | :---: | :--- | :--- |
-| **Nguồn Tím (Purple)** | **+36V to +48V DC** | Motor Power Supply | H-Bridge Power MOSFETs, Stepper Coils, Bulk Capacitors |
-| **Nguồn Đỏ (Red)** | **+15V DC** | Gate Driver Rail | IRS2111S ICs (U19, U20, U21, U22), Bootstrap Diodes |
-| **Nguồn Lam (Blue)** | **0V (GND)** | Power Ground | System common return, Star ground topology |
+| **Motor Rail (Purple Lead)** | **+36V to +48V DC** | Motor Power Supply | H-Bridge Power MOSFETs, Stepper Coils, Bulk Capacitors |
+| **Gate Rail (Red Lead)** | **+15V DC** | Gate Driver Supply | IRS2111S ICs (U19, U20, U21, U22), Bootstrap Diodes |
+| **Ground (Blue Lead)** | **0V (GND)** | Power Ground | System common return, Star ground topology |
 
 ### Key Hardware Stages:
 - **Reference DAC Stage:** 4-bit digital outputs pass through buffer IC **U7**, through discrete R-2R resistor ladders, outputting analog sine/cosine reference voltages at **`TP10` (Coil A)** and **`TP11` (Coil B)**.
@@ -278,7 +277,6 @@ pio run -e debug -t upload
 .
 ├── LICENSE                          # MIT License
 ├── README.md                        # English master documentation
-├── README_VN.md                     # Full Vietnamese documentation
 ├── mapping.ve                       # AGM CPLD pin assignment configuration
 ├── platformio.ini                   # PlatformIO build configuration for agrv2k_303
 ├── docs/                            # In-depth technical documentation suite
@@ -306,6 +304,7 @@ pio run -e debug -t upload
 │   ├── step_sequencer.v             # Microstep counter & pulse edge detector
 │   ├── stepper_axis.v               # 2-phase axis core (Phase A & B)
 │   ├── stepper_top.v                # Top-level with AHB bus interface
+│   ├── stepper_top_sim.v            # Simulation top-level module (ax1_sim)
 │   ├── syn_in_signal.v              # Multi-stage flip-flop synchronizer
 │   └── tb_stepper.v                 # Comprehensive 12-testcase verification bench
 └── src/                             # RISC-V MCU firmware
@@ -325,7 +324,6 @@ pio run -e debug -t upload
 - [Pinout & Hardware Calculations (docs/PINOUT_AND_SCHEMATIC.md)](docs/PINOUT_AND_SCHEMATIC.md)
 - [AHB Register Map & C Driver API (docs/REGISTERS_API.md)](docs/REGISTERS_API.md)
 - [Digital Simulation Testbench Report (docs/VERIFICATION.md)](docs/VERIFICATION.md)
-- [Tài Liệu Tiếng Việt Đầy Đủ (README_VN.md)](README_VN.md)
 
 ---
 

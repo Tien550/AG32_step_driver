@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rtl-simulation:
+    name: RTL Simulation & Testbench Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y iverilog
+
+      - name: Compile Top-Level RTL (Synthesis Syntax Gate)
+        run: |
+          iverilog -g2012 -s ax1_top -o sim_top.vvp \
+            rtl/syn_in_signal.v \
+            rtl/input_sync.v \
+            rtl/blanking_filter.v \
+            rtl/oc_latch.v \
+            rtl/chopper_timer.v \
+            rtl/sine_lut.v \
+            rtl/step_sequencer.v \
+            rtl/chopper_thresholds.v \
+            rtl/pwm_b_fsm.v \
+            rtl/dac4_vref.v \
+            rtl/coil_driver_dac.v \
+            rtl/stepper_axis.v \
+            rtl/stepper_top.v
+
+      - name: Compile Testbench & Simulation Model
+        run: |
+          iverilog -g2012 -s tb_stepper -o sim_stepper.vvp \
+            rtl/syn_in_signal.v \
+            rtl/input_sync.v \
+            rtl/blanking_filter.v \
+            rtl/oc_latch.v \
+            rtl/chopper_timer.v \
+            rtl/sine_lut.v \
+            rtl/step_sequencer.v \
+            rtl/chopper_thresholds.v \
+            rtl/pwm_b_fsm.v \
+            rtl/dac4_vref.v \
+            rtl/coil_driver_dac.v \
+            rtl/stepper_axis.v \
+            rtl/stepper_top_sim.v \
+            rtl/tb_stepper.v
+
+      - name: Execute 12-Testcase Verification Suite
+        run: |
+          vvp sim_stepper.vvp
+
+  rtl-lint:
+    name: RTL Static Lint Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Verilator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y verilator
+
+      - name: Verilator Lint Top Level
+        run: |
+          verilator --lint-only -Wall \
+            -Wno-DECLFILENAME \
+            -Wno-PINMISSING \
+            -Wno-UNUSED \
+            -Wno-UNDRIVEN \
+            rtl/syn_in_signal.v \
+            rtl/input_sync.v \
+            rtl/blanking_filter.v \
+            rtl/oc_latch.v \
+            rtl/chopper_timer.v \
+            rtl/sine_lut.v \
+            rtl/step_sequencer.v \
+            rtl/chopper_thresholds.v \
+            rtl/pwm_b_fsm.v \
+            rtl/dac4_vref.v \
+            rtl/coil_driver_dac.v \
+            rtl/stepper_axis.v \
+            rtl/stepper_top.v
+
+  firmware-check:
+    name: Firmware C Static Syntax Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Verify C Firmware Compilation (Mock Header)
+        run: |
+          mkdir -p include_mock
+          cat << 'EOF' > include_mock/board.h
+          #ifndef BOARD_H
+          #define BOARD_H
+          #include <stdint.h>
+          #define PLIC_MAX_PRIORITY 7
+          #define BUT_GPIO_IRQ 1
+          #define MSG_UART ((void *)0)
+          static inline void board_init(void) {}
+          static inline void INT_SetIRQThreshold(int p) {(void)p;}
+          static inline void INT_EnableIRQ(int irq, int p) {(void)irq; (void)p;}
+          static inline int UART_IsTxBusy(void *u) {(void)u; return 0;}
+          #endif
+          EOF
+          gcc -Wall -Wextra -Werror -fsyntax-only -Isrc -Iinclude_mock src/main.c
+
+  doc-integrity:
+    name: Documentation & Asset Integrity Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Image and Markdown Asset References
+        run: |
+          python -c "
+          import os, re, sys
+
+          broken_links = 0
+          img_pattern = re.compile(r'\!\[.*?\]\((.*?)\)')
+          link_pattern = re.compile(r'\[.*?\]\((.*?)\)')
+
+          for root, _, files in os.walk('.'):
+              if '.git' in root: continue
+              for f in files:
+                  if f.endswith('.md'):
+                      p = os.path.join(root, f)
+                      with open(p, 'r', encoding='utf-8') as fp:
+                          content = fp.read()
+                      for target in img_pattern.findall(content) + link_pattern.findall(content):
+                          if target.startswith(('http://', 'https://', 'mailto:', '#')):
+                              continue
+                          target_clean = target.split('#')[0]
+                          target_path = os.path.normpath(os.path.join(root, target_clean))
+                          if not os.path.exists(target_path):
+                              print(f'Broken link in {p}: {target} -> {target_path}')
+                              broken_links += 1
+
+          if broken_links > 0:
+              sys.exit(f'Found {broken_links} broken documentation links!')
+          print('All documentation links and assets verified successfully!')
+          "

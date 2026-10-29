@@ -112,3 +112,4 @@ $$\text{LUT Values: } (2, 6, 10, 12, 14, 12, 10, 6, -2, -6, -10, -12, -14, -12, 
   - Complex `zc_mode` logic removed from RTL.
   - FSM streamlined down to **6 robust states**: `S_OFF` $\rightarrow$ `S_DT_ON` $\rightarrow$ `S_DRIVE` $\rightarrow$ `S_DT_OFF` $\rightarrow$ `S_FAST` $\rightarrow$ `S_SLOW` $\rightarrow$ `S_OFF`.
   - Added an 8-bit digital blanking filter ($80\text{ ns}$) to reject switching spikes on the overcurrent line.
+
