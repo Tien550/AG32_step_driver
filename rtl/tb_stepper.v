@@ -244,6 +244,9 @@ module tb_stepper;
         // TC3: 16-step sign change — coil A S_FAST output polarity
         // ─────────────────────────────────────────────────────────
         $display("\n=== TC3: 16-Step Sign Change (step_dir=0, count up) ===");
+        rst_n = 0; repeat(5) @(posedge clk);
+        rst_n = 1; repeat(SETTLE_CYCLES) @(posedge clk);
+        axis_en = 1; run_hold = 1;
         step_dir = 0;
         for (i = 0; i < 16; i = i+1) begin
             send_pulse(4);
@@ -453,7 +456,8 @@ module tb_stepper;
 
         $display("TC8-A: oc_cmp=1 → oc_fault latches → all gates LOW...");
         oc_cmp = 1;
-        repeat(5) @(posedge clk);
+        // Wait for input_sync (2 cyc) + blanking_filter (8 cyc) + latch (1 cyc)
+        repeat(20) @(posedge clk);
         if (q1_a | q3_a | q1_b | q3_b) begin
             $display("FAIL TC8-A: gate(s) still HIGH (A:%b%b B:%b%b)",
                      q1_a, q3_a, q1_b, q3_b);

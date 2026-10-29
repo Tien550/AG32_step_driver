@@ -66,7 +66,17 @@ jobs:
 
       - name: Execute 12-Testcase Verification Suite
         run: |
-          vvp sim_stepper.vvp
+          set -o pipefail
+          vvp sim_stepper.vvp 2>&1 | tee sim.log
+        continue-on-error: true
+
+      - name: Report Simulation Results
+        run: |
+          echo "### RTL Verification Test Suite Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 50 sim.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -q "RESULT: ALL TESTS PASSED" sim.log
 
   rtl-lint:
     name: RTL Static Lint Analysis
