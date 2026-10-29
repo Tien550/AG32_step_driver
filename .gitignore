@@ -1,11 +1,36 @@
+# PlatformIO build artifacts
 .pio/
+
+# IDE configurations
 .vscode/
 .claude/
-step_driver_release_batch.bin
+*.suo
+*.user
+*.userosv
+*.sln.docstates
+
+# AGM synthesis and Quartus temporary outputs
 logic/
-rtl/project_2
-rtl/no_zc
+*.qws
+*.rpt
+*.summary
+*.smsg
+
+# Vivado simulation workspace
+rtl/project_2/
+rtl/no_zc/
 rtl/stepper_top_sim.v
-rtl/tb_stepper.v
+
+# Backup and temp files
 rtl/*.v.bak
+*.bak
+*~
+
+# Test experiment branches
 Test_final_case/
+
+# Binary production releases
+step_driver_release_batch.bin
+*.bin
+*.hex
+*.elf
